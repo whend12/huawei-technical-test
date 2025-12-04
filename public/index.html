@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Form API UI</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+        max-width: 900px;
+        margin: 32px auto;
+        color: #111;
+      }
+      h1 {
+        margin-bottom: 8px;
+      }
+      .card {
+        border: 1px solid #e4e4e7;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 16px;
+        background: #fff;
+      }
+      label {
+        display: block;
+        margin: 8px 0 4px;
+        font-weight: 600;
+      }
+      input[type="text"],
+      input[type="email"],
+      input[type="number"] {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #d0d0d5;
+        border-radius: 6px;
+      }
+      button {
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: 0;
+        background: #0366d6;
+        color: #fff;
+        cursor: pointer;
+      }
+      button[disabled] {
+        opacity: 0.6;
+        cursor: default;
+      }
+      .row {
+        display: flex;
+        gap: 12px;
+        align-items: end;
+      }
+      pre.output {
+        background: #0f172a;
+        color: #dbeafe;
+        padding: 12px;
+        border-radius: 6px;
+        overflow: auto;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono",
+          "Source Code Pro", monospace;
+      }
+      .muted {
+        color: #6b7280;
+      }
+      .small {
+        font-size: 90%;
+      }
+      .actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+      }
+      .inline {
+        display: inline-block;
+      }
+      .result-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 8px;
+      }
+      .result-table th,
+      .result-table td {
+        border: 1px solid #e4e4e7;
+        padding: 8px;
+        text-align: left;
+      }
+      .result-table th {
+        background: #023166;
+        font-weight: 700;
+      }
+      .view-select {
+        margin-left: auto;
+        display: inline-flex;
+        gap: 8px;
+        align-items: center;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Simple Form Client</h1>
+    <p class="muted small">
+      Submit a form, list all entries, or fetch by ID.
+      <br />
+      Endpoints: /api/v1/form
+    </p>
+
+    <section class="card" aria-labelledby="submit-heading">
+      <h2 id="submit-heading">Submit form</h2>
+      <form id="formSubmit" novalidate>
+        <label for="name">Name</label>
+        <input
+          id="name"
+          name="name"
+          type="text"
+          required
+          minlength="2"
+          autocomplete="name"
+          placeholder="Wendy"
+        />
+
+        <label for="email">Email</label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          required
+          autocomplete="email"
+          placeholder="wendygardiel@gmai.com"
+        />
+
+        <label for="phone">Phone</label>
+        <input
+          id="phone"
+          name="phone"
+          type="tel"
+          inputmode="tel"
+          autocomplete="tel"
+          pattern="^[+\d][\d\s-]{6,}$"
+          required
+          placeholder="081296262351"
+        />
+
+        <div class="actions">
+          <button id="btnSubmit" type="submit">Submit</button>
+          <span
+            id="submitStatus"
+            class="muted small inline"
+            aria-live="polite"
+          ></span>
+        </div>
+      </form>
+    </section>
+
+    <section class="card" aria-labelledby="list-heading">
+      <h2 id="list-heading">Get all entries</h2>
+      <div class="actions" style="align-items: center">
+        <button id="btnGetAll">Get all</button>
+
+        <div class="view-select">
+          <label for="allView" class="muted small">View</label>
+          <select id="allView" class="small" title="Select view">
+            <option value="json">JSON</option>
+            <option value="table">Table</option>
+          </select>
+        </div>
+
+        <span
+          id="getAllStatus"
+          class="muted small inline"
+          aria-live="polite"
+        ></span>
+      </div>
+      <div style="margin-top: 12px">
+        <pre id="allOutput" class="output">No data fetched yet.</pre>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="byid-heading">
+      <h2 id="byid-heading">Get by ID</h2>
+      <label for="getId">ID</label>
+      <div class="row" style="align-items: center">
+        <input id="getId" type="number" min="1" placeholder="1" />
+        <button id="btnGetById">Get</button>
+
+        <div class="view-select">
+          <label for="byIdView" class="muted small">View</label>
+          <select id="byIdView" class="small" title="Select view">
+            <option value="json">JSON</option>
+            <option value="table">Table</option>
+          </select>
+        </div>
+
+        <span
+          id="getByIdStatus"
+          class="muted small inline"
+          aria-live="polite"
+        ></span>
+      </div>
+      <div style="margin-top: 12px">
+        <pre id="byIdOutput" class="output">No data fetched yet.</pre>
+      </div>
+    </section>
+
+    <script>
+      const base = "/api/v1/form";
+      const form = document.getElementById("formSubmit");
+      const btnSubmit = document.getElementById("btnSubmit");
+      const submitStatus = document.getElementById("submitStatus");
+
+      const btnGetAll = document.getElementById("btnGetAll");
+      const allOutput = document.getElementById("allOutput");
+      const getAllStatus = document.getElementById("getAllStatus");
+      const allView = document.getElementById("allView");
+
+      const btnGetById = document.getElementById("btnGetById");
+      const getIdInput = document.getElementById("getId");
+      const byIdOutput = document.getElementById("byIdOutput");
+      const getByIdStatus = document.getElementById("getByIdStatus");
+      const byIdView = document.getElementById("byIdView");
+
+      const state = {
+        all: null,
+        byId: null,
+      };
+
+      function pretty(obj) {
+        return JSON.stringify(obj, null, 2);
+      }
+
+      function renderTableFromArray(arr) {
+        if (!Array.isArray(arr) || arr.length === 0) {
+          return '<div class="muted small">No entries to show.</div>';
+        }
+        const cols = new Set();
+        arr.forEach((it) => Object.keys(it || {}).forEach((k) => cols.add(k)));
+        const headers = Array.from(cols);
+        let html = '<table class="result-table"><thead><tr>';
+        headers.forEach((h) => (html += `<th>${escapeHtml(h)}</th>`));
+        html += "</tr></thead><tbody>";
+        arr.forEach((row) => {
+          html += "<tr>";
+          headers.forEach((h) => {
+            let v =
+              row && row[h] !== undefined && row[h] !== null ? row[h] : "";
+            html += `<td>${escapeHtml(String(v))}</td>`;
+          });
+          html += "</tr>";
+        });
+        html += "</tbody></table>";
+        return html;
+      }
+
+      function renderTableFromObject(obj) {
+        if (!obj || typeof obj !== "object") {
+          return '<div class="muted small">No data to show.</div>';
+        }
+        let html =
+          '<table class="result-table"><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>';
+        Object.keys(obj).forEach((k) => {
+          html += `<tr><td>${escapeHtml(k)}</td><td>${escapeHtml(
+            String(obj[k] ?? "")
+          )}</td></tr>`;
+        });
+        html += "</tbody></table>";
+        return html;
+      }
+
+      function escapeHtml(str) {
+        return str
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#39;");
+      }
+
+      function renderResult(containerEl, data, viewMode) {
+        if (viewMode === "table") {
+          if (Array.isArray(data)) {
+            containerEl.innerHTML = renderTableFromArray(data);
+          } else {
+            containerEl.innerHTML = renderTableFromObject(data);
+          }
+        } else {
+          containerEl.textContent = pretty(data ?? {});
+        }
+      }
+
+      async function postForm(data) {
+        submitStatus.textContent = "Sending...";
+        btnSubmit.disabled = true;
+        try {
+          const res = await fetch(base, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+          });
+          const json = await res.json().catch(() => ({ success: res.ok }));
+          if (!res.ok || json?.success === false) {
+            throw new Error(json?.message || "Request failed");
+          }
+          submitStatus.textContent = "Saved.";
+          return json;
+        } catch (err) {
+          submitStatus.textContent = "Error: " + (err.message || err);
+          throw err;
+        } finally {
+          btnSubmit.disabled = false;
+          setTimeout(() => (submitStatus.textContent = ""), 3000);
+        }
+      }
+
+      async function getAll() {
+        getAllStatus.textContent = "Loading...";
+        btnGetAll.disabled = true;
+        try {
+          const res = await fetch(base, { method: "GET" });
+          const json = await res.json().catch(() => null);
+          if (!res.ok) throw new Error(json?.message || "Failed to fetch");
+          state.all = json?.data ?? json;
+          renderResult(allOutput, state.all, allView.value);
+          getAllStatus.textContent = "OK";
+        } catch (err) {
+          getAllStatus.textContent = "Error: " + (err.message || err);
+          allOutput.textContent = "";
+        } finally {
+          btnGetAll.disabled = false;
+          setTimeout(() => (getAllStatus.textContent = ""), 3000);
+        }
+      }
+
+      async function getById(id) {
+        getByIdStatus.textContent = "Loading...";
+        btnGetById.disabled = true;
+        try {
+          const res = await fetch(base + "/" + id, { method: "GET" });
+          const json = await res.json().catch(() => null);
+          if (!res.ok || json?.success === false)
+            throw new Error(json?.message || "Not found");
+          state.byId = json?.data ?? json;
+          renderResult(byIdOutput, state.byId, byIdView.value);
+          getByIdStatus.textContent = "OK";
+        } catch (err) {
+          getByIdStatus.textContent = "Error: " + (err.message || err);
+          byIdOutput.textContent = "";
+        } finally {
+          btnGetById.disabled = false;
+          setTimeout(() => (getByIdStatus.textContent = ""), 3000);
+        }
+      }
+
+      function setFieldValidity(input, ok) {
+        input.setAttribute("aria-invalid", ok ? "false" : "true");
+      }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const nameEl = form.name;
+        const emailEl = form.email;
+        const phoneEl = form.phone;
+        const data = {
+          name: nameEl.value.trim(),
+          email: emailEl.value.trim(),
+          phone: phoneEl.value.trim(),
+        };
+        let valid = true;
+        if (data.name.length < 2) {
+          valid = false;
+          setFieldValidity(nameEl, false);
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
+          valid = false;
+          setFieldValidity(emailEl, false);
+        }
+        if (!/^[+\d][\d\s-]{6,}$/.test(data.phone)) {
+          valid = false;
+          setFieldValidity(phoneEl, false);
+        }
+        if (!valid) {
+          submitStatus.textContent = "Please fix the highlighted fields.";
+          setTimeout(() => (submitStatus.textContent = ""), 3000);
+          return;
+        } else {
+          [nameEl, emailEl, phoneEl].forEach((i) => setFieldValidity(i, true));
+        }
+        try {
+          const r = await postForm(data);
+          if (r?.data) {
+            state.byId = r.data;
+            renderResult(byIdOutput, state.byId, byIdView.value);
+          }
+          await getAll();
+          form.reset();
+        } catch (err) {
+          console.error(err);
+        }
+      });
+
+      allView.addEventListener("change", () => {
+        renderResult(allOutput, state.all, allView.value);
+      });
+
+      byIdView.addEventListener("change", () => {
+        renderResult(byIdOutput, state.byId, byIdView.value);
+      });
+
+      btnGetAll.addEventListener("click", getAll);
+
+      btnGetById.addEventListener("click", async () => {
+        const id = String(getIdInput.value || "").trim();
+        if (!id) {
+          getByIdStatus.textContent = "Provide an ID";
+          setTimeout(() => (getByIdStatus.textContent = ""), 2000);
+          return;
+        }
+        await getById(id);
+      });
+
+      window.addEventListener("load", () => {
+        getAll();
+      });
+    </script>
+  </body>
+</html>
